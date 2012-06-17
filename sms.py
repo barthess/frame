@@ -15,7 +15,7 @@ def send_sms(
     modem="/dev/ttyACM0"): # modem device like "/dev/ttyUSB0"
   """Send SMS via GSM modem"""
   fd = os.open(modem, os.O_RDWR)
-  # os.write(fd, "ATZ,ATE0")
+  # os.write(fd, "ATZ,ATE0") # need for Motorola C390
   os.write(fd, "AT+CMGF=1 \015")
   os.write(fd, "AT+CMGS=\"" + phone+ "\" \015")
   os.write(fd, text + " \015")
