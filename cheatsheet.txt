@@ -1,0 +1,1 @@
+dropbearkey -f /etc/dropbear/dropbear_dss_host_key -y | grep ssh-dss | ssh root@192.168.42.51 'sh -c "cat - >> ~/.ssh/authorized_keys"'
