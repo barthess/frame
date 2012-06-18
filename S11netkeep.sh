@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ROUTER=192.168.42.1
-PERIOD=15
+PERIOD=60
 
 # save some debug information.
 blackbox(){
