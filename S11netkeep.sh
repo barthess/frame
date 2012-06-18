@@ -2,6 +2,8 @@
 
 ROUTER=192.168.42.1
 PERIOD=60
+TRYLIMIT=10
+TRY=0
 
 # save some debug information.
 blackbox(){
@@ -20,10 +22,18 @@ main(){
 		if [[ $? != 0 ]]
 		then
 			logger "netkeeper: trying to reconnect wi-fi"
+			TRY=`expr $TRY + 1`
 			blackbox
 			/usr/sbin/restart_wifi
-		# else
-		# 	logger "connection ok"
+		else
+			echo "connection ok"
+			TRY=0
+		fi
+
+		if [[ $TRY == $TRYLIMIT ]]
+		then
+			echo 'exiting'
+			exit
 		fi
 	done
 }
