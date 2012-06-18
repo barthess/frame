@@ -1,0 +1,13 @@
+#!/bin/sh
+
+killall wpa_supplicant
+
+/sbin/rmmod vntwusb
+sleep 5
+/sbin/insmod /lib/modules/vntwusb.ko
+
+rm /tmp/wpa_supplicant/eth1
+/sbin/ifconfig eth1 up
+/sbin/wpa_supplicant -D vntwusb -i eth1 -c /etc/wpa.conf -B
+dhcpconf eth1
+
