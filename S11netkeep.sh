@@ -3,28 +3,13 @@
 ROUTER=192.168.42.1
 PERIOD=15
 
-# save some debug information.
-blackbox(){
-	ls /dev -lar > /mnt/mtddisk/dev.log
-	ifconfig -a > /mnt/mtddisk/ifconfig.log
-}
-
-# infinitely ping router every $PERIOD seconds
-# if ping unsuccessful than try to reconnect
+# infinitely call tracerout to router every $PERIOD seconds
+# Probably that resolve problem with disconnection
 main(){
 	while [ 1 ]
 	do
 		sleep $PERIOD
-		ping $ROUTER -c1
-		
-		if [[ $? != 0 ]]
-		then
-			logger "netkeeper: trying to reconnect wi-fi"
-			blackbox
-			/usr/sbin/restart_wifi
-		# else
-		# 	logger "connection ok"
-		fi
+		traceroute $ROUTER
 	done
 }
 
