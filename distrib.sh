@@ -1,69 +1,83 @@
 #!/bin/sh
 
-# TODO: mail notification about errors
+# TODO: Usage:
 
-# Path to store subdirectories with playlists and videos on router.
-# Their names must be the same us frames' hostnames (SB701013 for example)
+# Local path containing subdirectories with playlists and videos.
+# Their names must be the same as frames' hostnames (SB701013 for example)
 # and must contain 2 subdirectories: "playlist" and "video"
-SRCDIR=/tmp/content
+LOCAL=/home/tmp/router/content
 
-# path on target frame to store content
-TRGTDIR=/tmp/content
+# remote path to router to store video for
+# later distribution to frames
+ROUTERIP=router
+ROUTERPATH=/root/testvideo
+
+# Path on frame to store content
+FRAMEPATH=/tmp
+
+############################################################
+# transfering files to router
+
+echo -e "Uploading files to router... \c"
+rsync -az -e ssh $LOCAL/* $ROUTERIP:$ROUTERPATH
+
+if [[ $?==0 ]]
+then
+	echo "SUCCESS!"
+else 
+	echo "FAILED!"
+	exit
+fi
+echo "----------------------------------------"
+
+#####################################################
+# redistributing files to each frame
 
 # dhcp leases file on router
 LEASES=/tmp/dhcp.leases
 
-# error flags
-ERRORS=0
-
-# error handler
-error(){
-	echo "ERROR: $1"
-	# write message to syslog
-	logger "content distributor ERROR: $1"
-	ERRORS=1
-}
-
-# success handler
-success(){
-	# write message to syslog
-	logger "content distributor SUCCESS: $1"
-}
-
-# send content to appropriate frame via ssh
-# probably would be better to use rsync from frame side.
+# send content to appropriate frame via rsync over ssh
 # $1 - frame name
 # $2 - frame ip-address
 send_content(){
-	echo "Trying to send files to frame $1 with $2 address..."
-	status=`scp -rp $SRCDIR/$1/* root@$2:$TRGTDIR`
+	echo -e "Trying to send files to frame $1 with $2 address... \c"
+
+	ssh router "rsync -az -e ssh $ROUTERPATH/$1/ root@$2:$FRAMEPATH"
 	if [[ $? == 0 ]]
 	then
-		echo "	Success"
-		success "frame $1 with $2 address updated"
+		echo "SUCCESS!"
 	else
-		error "sending files to $1 failed!"
+		echo "FAILED!"
 	fi
 }
 
-####################################################
-# main cycle
-for dir in `ls $SRCDIR`
+# get leases from router to local computer
+echo -e "Obtaining dhcp.leases file from router... \c"
+scp -q $ROUTERIP:$LEASES /tmp
+echo "SUCCESS!"
+
+# redistribution cycle
+for dir in `ls $LOCAL`
 do
-	ip=`grep -E " $dir " $LEASES | awk '{print $3}'`
+	ip=`grep -E " $dir " /tmp/dhcp.leases | awk '{print $3}'`
 	if [[ $ip != "" ]]
 	then
 		send_content $dir $ip
 	else
-		error "$dir not found in $LEASES"
+		ERRORS=1
+		echo "**** ERROR! $dir not found in dhcp.leases"
 	fi
 done
 
+# delete unneeded file
+rm /tmp/dhcp.leases
+
 # final message
-echo "--------------------------------------------------"
+echo "-------------------------------------------"
 if [[ $ERRORS != 0 ]]
 then
-	echo "There were some errors. See system log."
+	echo "There were some errors during content redistribution to frames."
 else
 	echo "Updating finalized without errors."
 fi
+
