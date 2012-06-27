@@ -54,12 +54,13 @@ send_content(){
 	fi
 
 	# upload _all_ files to frame
-	rsync -az -e ssh $SRCDIR/$1/* root@$1:$TRGTDIR
+	rsync -azv -e ssh $SRCDIR/$1/* root@$1:$TRGTDIR
 	if [[ $? == 0 ]]
 	then
 		success "content on frame with $1 address updated"
 	else
 		error "sending files to frame $1 failed!"
+		exit 1
 	fi
 
 	# update cron jobs on frame
@@ -70,13 +71,19 @@ send_content(){
 		touch $SRCDIR/$1.success
 	else
 		error "updating cron jobs on frame $1 failed!"
+		exit 1
 	fi
+
+	exit 0
 }
 
 ####################################################
 # main cycle
+echo starting...
+
 for dir in `ls $SRCDIR`
 do
+	echo "processing $dir directory..."
 	if [ -d $dir ]
 	then
 		send_content $dir
