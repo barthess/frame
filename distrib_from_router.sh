@@ -32,8 +32,7 @@ success(){
 }
 
 # rsync content to appropriate frames
-# $1 - frame name
-# $2 - frame ip-address
+# $1 - frame ip-address (and directory name at the same time)
 send_content(){
 	# do some tests
 	if [ ! -d $SRCDIR/$1/video ]
@@ -55,19 +54,19 @@ send_content(){
 	fi
 
 	# upload _all_ files to frame
-	rsync -az -e ssh $SRCDIR/$1/* root@$2:$TRGTDIR
+	rsync -az -e ssh $SRCDIR/$1/* root@$1:$TRGTDIR
 	if [[ $? == 0 ]]
 	then
-		success "content on frame $1 with $2 address updated"
+		success "content on frame with $1 address updated"
 	else
-		error "sending files to $1 failed!"
+		error "sending files to frame $1 failed!"
 	fi
 
 	# update cron jobs on frame
-	ssh root@$2 "crontab $TRGTDIR/crontab"
+	ssh root@$1 "crontab $TRGTDIR/crontab"
 	if [[ $? == 0 ]]
 	then
-		success "crontab on frame $1 with $2 address updated"
+		success "crontab on frame with $1 address updated"
 		touch $SRCDIR/$1.success
 	else
 		error "updating cron jobs on frame $1 failed!"
@@ -80,13 +79,7 @@ for dir in `ls $SRCDIR`
 do
 	if [ -d $dir ]
 	then
-		ip=`grep -E " $dir " $LEASES | awk '{print $3}'`
-		if [[ $ip != "" ]]
-		then
-			send_content $dir $ip
-		else
-			error "$dir not found in $LEASES"
-		fi
+		send_content $dir
 	fi
 done
 
