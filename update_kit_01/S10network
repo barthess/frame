@@ -1,0 +1,52 @@
+#!/bin/sh
+
+YPOS=120
+guilog() {
+    echo "$YPOS $1"
+    gui-echo 0 $YPOS "$1"
+    YPOS=$((YPOS+20)) 
+}
+
+CONFSTATUS=0
+
+dhcpconf() {
+    /sbin/ifconfig $1 up
+    if /sbin/udhcpc -t 20 -n -H `/bin/hostname` -i $1 ; then
+        guilog "$1 `/sbin/ifconfig $1 | grep "inet addr:" | tail -c +11`"
+        CONFSTATUS="OK"
+    else
+        guilog "No network at interface $1"
+        CONFSTATUS="FAIL"
+    fi
+}
+
+/bin/hostname -F /etc/hostname
+guilog "Hostname is: `/bin/hostname`"
+
+/sbin/ifconfig lo 127.0.0.1 netmask 255.0.0.0
+
+/sbin/route add -net 127.0.0.0 netmask 255.255.255.0 lo
+
+
+#configuting wifi
+if [ -f /etc/wpa.conf ] ; then
+    guilog "Configuring wifi"
+    if ! /sbin/lsmod | grep -q vntwusb ; then 
+        guilog "Loadind vntwusb.ko"
+        /sbin/insmod /lib/modules/vntwusb.ko
+    fi
+    rm /tmp/wpa_supplicant/eth1
+    /sbin/ifconfig eth1 up
+    /sbin/wpa_supplicant -D vntwusb -i eth1 -c /etc/wpa.conf -B
+    dhcpconf eth1
+fi
+
+if [ "$CONFSTATUS" != "OK" ] ; then
+    guilog "Configuring ethernet"
+    dhcpconf eth0
+fi
+#-----using fix ip , please revise your ip address
+#ifconfig eth0 xxx.xxx.xxx.xxx netmask 255.255.252.0 
+#/sbin/udhcpc 1> /dev/null 2>&1 &
+/sbin/syn_rtc_time &
+

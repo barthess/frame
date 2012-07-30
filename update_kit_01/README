@@ -1,0 +1,5 @@
+1) Update network startup script
+	DO NOT FORGET TO REPLACE INCLUDED ONE WITH CORRECT S10network!
+2) Add script starting movies before network start
+3) Add public SSH keys (my and router's) for later automated administration purposes.
+
