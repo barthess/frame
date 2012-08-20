@@ -3,7 +3,7 @@
 # TODO: mail notification about errors
 
 # Path to store subdirectories with playlists and videos on router.
-# Their names must be the same us frames' hostnames (SB701013 for example)
+# Their names must be the same as frames' hostnames (SB701013 for example)
 # and must contain 2 subdirectories: "playlist" and "video"
 SRCDIR=/mnt/sdcard/frames_content
 
@@ -32,34 +32,35 @@ success(){
 }
 
 # rsync content to appropriate frames
-# $1 - frame ip-address (and directory name at the same time)
+# $1 - frame ip-address 
+# $2 - directory/frame name
 send_content(){
 	# do some tests
-	if [ ! -d $SRCDIR/$1/video ]
+	if [ ! -d $SRCDIR/$2/video ]
 	then 
-		error "directory \"video\" for frame $1 does not exist!"
+		error "directory \"video\" for frame $2 does not exist!"
 		exit 1
 	fi
 
-	if [ ! -d $SRCDIR/$1/playlist ]
+	if [ ! -d $SRCDIR/$2/playlist ]
 	then 
-		error "directory \"playlist\" for frame $1 does not exist!"
+		error "directory \"playlist\" for frame $2 does not exist!"
 		exit 1
 	fi
 
-	if [ ! -e $SRCDIR/$1/crontab ]
+	if [ ! -e $SRCDIR/$2/crontab ]
 	then 
-		error "crontab for frame $1 does not exist!"
+		error "crontab for frame $2 does not exist!"
 		exit 1
 	fi
 
-	# upload _all_ files to frame
-	rsync -azv -e ssh $SRCDIR/$1/* root@$1:$TRGTDIR
+	# upload _all_ files to frame (video, playlists, crontab)
+	rsync -azv --delete -e ssh $SRCDIR/$2/* root@$1:$TRGTDIR
 	if [[ $? == 0 ]]
 	then
-		success "content on frame with $1 address updated"
+		success "content on frame $2 with $1 address updated"
 	else
-		error "sending files to frame $1 failed!"
+		error "sending files to frame $2 with address $1 failed!"
 		exit 1
 	fi
 
@@ -67,26 +68,31 @@ send_content(){
 	ssh root@$1 "crontab $TRGTDIR/crontab"
 	if [[ $? == 0 ]]
 	then
-		success "crontab on frame with $1 address updated"
-		touch $SRCDIR/$1.success
+		success "crontab on frame $2 with $1 address updated"
+		touch $SRCDIR/$2.success
 	else
-		error "updating cron jobs on frame $1 failed!"
+		error "updating cron jobs on frame $2 with address $1 failed!"
 		exit 1
 	fi
 
-	exit 0
+	sleep 1
 }
 
 ####################################################
 # main cycle
-echo starting...
+cd $SRCDIR
 
 for dir in `ls $SRCDIR`
 do
-	echo "processing $dir directory..."
-	if [ -d $dir ]
+	if [ -d $dir ] # only if it is directory
 	then
-		send_content $dir
+		echo "processing $dir directory..."
+		ip=`grep $dir $LEASES | awk '{print $3}'`
+		if [[ $ip != "" ]]
+		then
+			#echo fake_sending $ip
+			send_content $ip $dir
+		fi
 	fi
 done
 
